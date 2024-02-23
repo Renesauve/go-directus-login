@@ -12,9 +12,9 @@
 
 # Go build - keep the compiled binary out of version control
 /main
-./all_in_one.txt
 .air.toml
-./concatenate.sh
+concatenate.sh
+all_in_one.txt
 
 # Dependency directories (remove the "/" at the end to ignore the directory but include its contents)
 /vendor/
