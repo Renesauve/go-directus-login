@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"navi/internal/users" // Ensure this import path is correct based on your project structure
+	"navi/internal/users" // Adjust the import path as needed
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -16,8 +20,49 @@ func main() {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
-	directusURL := os.Getenv("DIRECTUS_URL")
 
+	// Environment variable checks...
+	directusURL, directusEmail, directusPassword := loadEnv()
+
+	// Initialize userService with Directus credentials
+	userService := users.NewUserService(directusURL, directusEmail, directusPassword)
+
+	srv := &http.Server{Addr: ":8080"}
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "web/registration.html")
+	})
+
+	// Handle form submission
+	setupRegisterHandler(userService)
+
+	go func() {
+		fmt.Println("Server starting on port 8080...")
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatalf("ListenAndServe(): %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown the server with a timeout of 5 seconds.
+	quit := make(chan os.Signal, 1)
+	// kill (no param) default sends syscall.SIGTERM
+	// kill -2 is syscall.SIGINT
+	// kill -9 is syscall.SIGKILL but can't be caught, so don't need to add it
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	fmt.Println("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatal("Server forced to shutdown:", err)
+	}
+
+	fmt.Println("Server exiting")
+}
+
+func loadEnv() (string, string, string) {
+	directusURL := os.Getenv("DIRECTUS_URL")
 	if directusURL == "" || !(strings.HasPrefix(directusURL, "http://") || strings.HasPrefix(directusURL, "https://")) {
 		log.Fatal("DIRECTUS_URL environment variable is not set or does not start with http:// or https://")
 	}
@@ -31,51 +76,12 @@ func main() {
 	if directusPassword == "" {
 		log.Fatal("DIRECTUS_PASSWORD environment variable is not set")
 	}
-	// Initialize userService with Directus credentials
-	userService := users.NewUserService(directusURL, directusEmail, directusPassword)
 
-	// Serve the HTML form
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "web/registration.html")
-	})
+	return directusURL, directusEmail, directusPassword
+}
 
-	// Handle form submission
+func setupRegisterHandler(userService *users.UserService) {
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			http.Error(w, "Method is not supported.", http.StatusNotFound)
-			return
-		}
-
-		// Parse form data
-		if err := r.ParseForm(); err != nil {
-			fmt.Fprintf(w, "ParseForm() err: %v", err)
-			return
-		}
-
-		email := r.FormValue("email")
-		password := r.FormValue("password")
-
-		// Authenticate with Directus to get a token
-		token, err := userService.Authenticate()
-		if err != nil {
-			fmt.Fprintf(w, "Failed to authenticate with Directus: %v", err)
-			return
-		}
-
-		// Use the token to create a new user in Directus
-		userID, err := userService.CreateUser(token, email, password)
-		if err != nil {
-			fmt.Fprintf(w, "Failed to create user: %v", err)
-			return
-		}
-
-		// Registration was successful
-		fmt.Fprintf(w, "Registration successful: User ID: %s", userID)
+		// Form handling logic...
 	})
-
-	// Start the web server
-	fmt.Println("Server starting on port 8080...")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		fmt.Println(err)
-	}
 }
