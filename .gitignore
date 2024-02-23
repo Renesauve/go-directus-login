@@ -1,0 +1,71 @@
+# Binaries and Objects
+/bin/
+/obj/
+/tmp/
+*.o
+*.a
+*.so
+*.exe
+*.dll
+*.out
+*.test
+
+# Go build - keep the compiled binary out of version control
+/main
+
+# Dependency directories (remove the "/" at the end to ignore the directory but include its contents)
+/vendor/
+node_modules/
+
+# IDE and Editor folders
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Log files and directories
+*.log
+logs/
+*.csv
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Fyne packaging
+/fyne-cross/
+/dist/
+
+# macOS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
