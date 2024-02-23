@@ -17,7 +17,8 @@ func NewUserService(directusURL, adminEmail, adminPassword string) *UserService 
 	}
 }
 
-func (s *UserService) Login(email, password string) (string, error) {
+func (s *UserService) Authenticate(email, password string) (string, error) {
+	// Directly return the call to DirectusClient's Authenticate method
 	return s.DirectusClient.Authenticate(email, password)
 }
 

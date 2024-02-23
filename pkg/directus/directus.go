@@ -60,9 +60,10 @@ func (c *Client) Authenticate(email, password string) (string, error) {
 	}
 
 	// Extract and return the access token
-	if accessToken, ok := result["data"].(map[string]interface{})["token"].(string); ok {
+	if accessToken, ok := result["data"].(map[string]interface{})["access_token"].(string); ok {
 		return accessToken, nil
 	}
+
 	return "", fmt.Errorf("failed to get access token from response")
 }
 
