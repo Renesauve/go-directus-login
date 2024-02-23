@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io" // Use io package instead of ioutil
 	"net/http"
+	"os"
 	// Potentially used for other ioutil replacements
 )
 
@@ -82,8 +83,9 @@ func (c *Client) CreateUser(email, password, roleID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	token := os.Getenv("DIRECTUS_TOKEN")
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer eGAEVUshdvle0MIfMbGaF0LqBuwOFqTF")
+	req.Header.Set("Authorization", "Bearer "+token)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
