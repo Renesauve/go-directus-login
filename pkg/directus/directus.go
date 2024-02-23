@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io" // Use io package instead of ioutil
 	"net/http"
+	// Potentially used for other ioutil replacements
 )
 
 type Client struct {
@@ -56,8 +57,8 @@ func (c *Client) Authenticate() (string, error) {
 
 func (c *Client) CreateUser(token, email, password string) (string, error) {
 	userData := map[string]interface{}{
-		"email":    email,    // Use parameter
-		"password": password, // Use parameter
+		"email":    email,
+		"password": password,
 	}
 	userDataBytes, _ := json.Marshal(userData)
 
@@ -79,7 +80,10 @@ func (c *Client) CreateUser(token, email, password string) (string, error) {
 		}
 		return createUserResp.Data.ID, nil
 	} else {
-		bodyBytes, _ := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body) // Replace ioutil.ReadAll with io.ReadAll
+		if err != nil {
+			return "", err // Handle potential errors from io.ReadAll
+		}
 		return "", fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 }
