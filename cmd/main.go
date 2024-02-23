@@ -2,66 +2,80 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"navi/internal/users" // Ensure this import path is correct based on your project structure
+	"net/http"
 	"os"
+	"strings"
 
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/widget"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	// It's good practice to separate app initialization and window creation into their own functions for better readability and maintenance.
-	myApp := app.New()
-	myWindow := createRegistrationWindow(myApp)
-
-	myWindow.ShowAndRun()
-}
-
-func createRegistrationWindow(app fyne.App) fyne.Window {
-	myWindow := app.NewWindow("Register")
-
-	// Consider moving user service initialization outside of your main or UI logic if it's used in multiple places or requires initial setup.
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 	directusURL := os.Getenv("DIRECTUS_URL")
-	directusEmail := os.Getenv("DIRECTUS_EMAIL")
-	directusPassword := os.Getenv("DIRECTUS_PASSWORD")
 
+	if directusURL == "" || !(strings.HasPrefix(directusURL, "http://") || strings.HasPrefix(directusURL, "https://")) {
+		log.Fatal("DIRECTUS_URL environment variable is not set or does not start with http:// or https://")
+	}
+
+	directusEmail := os.Getenv("DIRECTUS_EMAIL")
+	if directusEmail == "" {
+		log.Fatal("DIRECTUS_EMAIL environment variable is not set")
+	}
+
+	directusPassword := os.Getenv("DIRECTUS_PASSWORD")
+	if directusPassword == "" {
+		log.Fatal("DIRECTUS_PASSWORD environment variable is not set")
+	}
+	// Initialize userService with Directus credentials
 	userService := users.NewUserService(directusURL, directusEmail, directusPassword)
 
-	emailEntry := widget.NewEntry()
-	emailEntry.SetPlaceHolder("Email")
-
-	passwordEntry := widget.NewPasswordEntry()
-	passwordEntry.SetPlaceHolder("Password")
-
-	registerBtn := widget.NewButton("Register", func() {
-		registerUser(userService, emailEntry.Text, passwordEntry.Text, myWindow)
+	// Serve the HTML form
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "web/registration.html")
 	})
 
-	myWindow.SetContent(container.NewVBox(
-		emailEntry,
-		passwordEntry,
-		registerBtn,
-	))
+	// Handle form submission
+	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "Method is not supported.", http.StatusNotFound)
+			return
+		}
 
-	return myWindow
-}
+		// Parse form data
+		if err := r.ParseForm(); err != nil {
+			fmt.Fprintf(w, "ParseForm() err: %v", err)
+			return
+		}
 
-// Separating the user registration logic into its own function improves readability and makes the code easier to manage.
-func registerUser(userService *users.UserService, email, password string, window fyne.Window) {
-	token, err := userService.Authenticate()
-	if err != nil {
-		dialog.ShowError(fmt.Errorf("Authentication failed: %v", err), window)
-		return
+		email := r.FormValue("email")
+		password := r.FormValue("password")
+
+		// Authenticate with Directus to get a token
+		token, err := userService.Authenticate()
+		if err != nil {
+			fmt.Fprintf(w, "Failed to authenticate with Directus: %v", err)
+			return
+		}
+
+		// Use the token to create a new user in Directus
+		userID, err := userService.CreateUser(token, email, password)
+		if err != nil {
+			fmt.Fprintf(w, "Failed to create user: %v", err)
+			return
+		}
+
+		// Registration was successful
+		fmt.Fprintf(w, "Registration successful: User ID: %s", userID)
+	})
+
+	// Start the web server
+	fmt.Println("Server starting on port 8080...")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		fmt.Println(err)
 	}
-
-	userID, err := userService.CreateUser(token, email, password)
-	if err != nil {
-		dialog.ShowError(fmt.Errorf("Failed to create user: %v", err), window)
-		return
-	}
-
-	dialog.ShowInformation("Success", fmt.Sprintf("User created successfully. User ID: %s", userID), window)
 }
