@@ -9,10 +9,8 @@
     <div>
       <h2>User Profile</h2>
       <div>
-        <p><strong>Email:</strong> user@example.com</p>
-        <!-- Dynamically replace with user's email -->
-        <p><strong>Name:</strong> John Doe</p>
-        <!-- Dynamically replace with user's name -->
+        <p><strong>Email:</strong> {{.Email}}</p>
+        <p><strong>Name:</strong> {{.Name}}</p>
         <!-- Add more user-specific information here -->
       </div>
       <a href="/logout" class="logout-button">Logout</a>

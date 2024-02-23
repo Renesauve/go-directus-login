@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 
 	"navi/internal/users" // Adjust the import path as needed
 
+	"github.com/golang-jwt/jwt"
 	"github.com/joho/godotenv"
 )
 
@@ -37,7 +39,7 @@ func loadEnv() (string, string, string) {
 func setupRoutes(userService *users.UserService) {
 	http.HandleFunc("/", serveRegistrationPage)
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) { loginHandler(w, r, userService) })
-	http.HandleFunc("/profile", serveProfilePage)
+	http.HandleFunc("/profile", func(w http.ResponseWriter, r *http.Request) { serveProfilePage(w, r, userService) })
 	http.HandleFunc("/logout", logoutHandler)
 	setupRegisterHandler(userService)
 }
@@ -73,16 +75,43 @@ func serveRegistrationPage(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "web/registration.html")
 }
 
-func serveProfilePage(w http.ResponseWriter, r *http.Request) {
-	// Check if the user is logged in by checking the session token
-	_, err := r.Cookie("session_token")
+// In main.go
+func serveProfilePage(w http.ResponseWriter, r *http.Request, userService *users.UserService) {
+	sessionCookie, err := r.Cookie("session_token")
 	if err != nil {
-		// If not logged in, redirect to the login page
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	// Serve the profile HTML page
-	http.ServeFile(w, r, "web/profile.html")
+
+	tokenString := sessionCookie.Value
+	claims := &Claims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return getJWTKey(), nil
+	})
+
+	if err != nil || !token.Valid {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+	fmt.Println(claims)
+	userEmail := claims.Email
+	user, err := userService.GetUserDetails(userEmail)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	tmpl, err := template.ParseFiles("web/profile.html")
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	err = tmpl.Execute(w, user)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
