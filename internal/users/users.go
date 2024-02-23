@@ -3,6 +3,7 @@ package users
 
 import (
 	"navi/pkg/directus" // Update this import path to match your module's actual path
+	"os"
 )
 
 type UserService struct {
@@ -10,16 +11,19 @@ type UserService struct {
 }
 
 func NewUserService(directusURL, adminEmail, adminPassword string) *UserService {
+	client := directus.NewClient(directusURL, adminEmail, adminPassword)
 	return &UserService{
-		DirectusClient: directus.NewClient(directusURL, adminEmail, adminPassword),
+		DirectusClient: client,
 	}
 }
 
-func (s *UserService) Authenticate() (string, error) {
-	return s.DirectusClient.Authenticate()
+func (s *UserService) Login(email, password string) (string, error) {
+	return s.DirectusClient.Authenticate(email, password)
 }
 
-func (s *UserService) CreateUser(token, email, password string) (string, error) {
-	// Modified to pass email and password as parameters
-	return s.DirectusClient.CreateUser(token, email, password)
+func (s *UserService) CreateUser(email, password string) (string, error) {
+	// Note: Removed the token parameter since it's likely not needed for user registration via Directus API,
+	// but adjust according to your Directus setup and permissions.
+	UUID := os.Getenv("DIRECTUS_USER_UUID")
+	return s.DirectusClient.CreateUser(email, password, UUID)
 }

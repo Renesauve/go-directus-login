@@ -34,6 +34,31 @@ func main() {
 	})
 
 	// Handle form submission
+	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			http.ServeFile(w, r, "web/login.html")
+		} else if r.Method == "POST" {
+			// Parse form data
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, "Error parsing form", http.StatusBadRequest)
+				return
+			}
+
+			email := r.FormValue("email")
+			password := r.FormValue("password")
+
+			// Attempt to login via Directus
+			token, err := userService.Login(email, password)
+			if err != nil {
+				// Handle failed login
+				fmt.Fprintf(w, "Login failed: %v", err)
+				return
+			}
+
+			// Handle successful login, e.g., by setting a session cookie
+			fmt.Fprintf(w, "Login successful, token: %s", token) // Adjust according to your needs
+		}
+	})
 	setupRegisterHandler(userService)
 
 	go func() {
@@ -82,6 +107,29 @@ func loadEnv() (string, string, string) {
 
 func setupRegisterHandler(userService *users.UserService) {
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
-		// Form handling logic...
+		if r.Method != "POST" {
+			http.Error(w, "Only POST method is supported", http.StatusMethodNotAllowed)
+			return
+		}
+
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Error parsing form", http.StatusBadRequest)
+			return
+		}
+
+		email := r.FormValue("email")
+		password := r.FormValue("password")
+
+		// Use the userService to create a new user in Directus
+		userID, err := userService.CreateUser(email, password) // Assuming CreateUser doesn't need a token for registration
+		if err != nil {
+			// Log the error and return a user-friendly message
+			log.Printf("Failed to register user: %v", err)
+			http.Error(w, "Failed to register user", http.StatusInternalServerError)
+			return
+		}
+
+		// Respond to the client
+		fmt.Fprintf(w, "User registered successfully: %s", userID)
 	})
 }
