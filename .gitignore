@@ -12,6 +12,7 @@
 
 # Go build - keep the compiled binary out of version control
 /main
+
 .air.toml
 concatenate.sh
 all_in_one.txt
