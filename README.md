@@ -1,56 +1,40 @@
-# Go To Directus Login Flow
+# GoLang & Directus Authentication Flow
 
-This project implements a login flow using Go and Directus, providing a secure way to handle user authentication and verification through email.
+## About This Project
 
-## Requirements
+This project is a personal exploration into building an authentication flow using GoLang in conjunction with Directus as the backend. It serves as a learning tool for understanding how to implement secure login mechanisms and manage user sessions.
 
-To run this project, you must have a Directus Docker environment set up.
+### Objectives
 
-## Environment Setup
+- To learn how to integrate GoLang with Directus for user authentication.
+- To understand the process of securing user login and registration.
+- To explore best practices in managing user sessions and security tokens.
 
-### Directus Environment Variables
+### Features
 
-After setting up your Directus Docker environment, ensure you configure the environment variables for email functionality. Add the following variables to your Directus `.env` file, replacing placeholders with your actual values:
+- User registration and login flow.
+- Secure password handling and token generation.
+- Interaction with Directus API for user management.
 
-```
-EMAIL_SMTP_HOST="smtp.example.com"
-EMAIL_SMTP_PORT="587"
-EMAIL_SMTP_USER="your-email@example.com"
-EMAIL_SMTP_PASSWORD="yourpassword"
-EMAIL_SMTP_SECURE="false" # true if using SSL
-EMAIL_SMTP_IGNORE_TLS="false" # true to ignore TLS/SSL errors
+## Learning Outcomes
 
-EMAIL_FROM="your-email@example.com"
-EMAIL_TRANSPORT="smtp"
+Through this project, I aimed to gain a deeper understanding of:
 
-ADMIN_ROLE_ID="your-admin-role-id"
-```
+- The Go programming language and its application in web development.
+- Directus as a headless CMS and its API for user management.
+- Security considerations in authentication flows, including password hashing and JWT handling.
 
-### Go Application Environment Variables
+## Disclaimer
 
-For the Go application, create a .env file in the root of your Go project with the following variables:
+This project is intended solely for my learning and is not meant as a production-ready solution. It showcases specific techniques and approaches in GoLang programming and Directus integration without focusing on comprehensive error handling or scalability concerns.
 
-```
-DIRECTUS_URL="https://your-directus-instance.com"
-DIRECTUS_EMAIL="your-directus-email@example.com"
-DIRECTUS_PASSWORD="your-directus-password"
-DIRECTUS_ADMIN_TOKEN="your-directus-admin-token"
-DIRECTUS_USER_UUID="your-directus-user-uuid"
-JWT_SECRET="your-jwt-secret"
-```
+## Acknowledgements
 
-## Using Air for Live Reloading
+- Directus for providing an extensive and flexible headless CMS.
+- The Go programming community for resources and tools that facilitated this learning project.
 
-To streamline the development process with live reloading, use air. If you haven't installed air, you can do so by running:
+### Future Aspirations
 
-`go get -u github.com/cosmtrek/air`
-
-Or you can install it globally (if you're using Go Modules, which is recommended):
-
-`go install github.com/cosmtrek/air@latest`
-
-To run your project with air, navigate to your project directory and execute:
-
-`air`
-
-This will automatically reload your Go application whenever a file change is detected, making development faster and more efficient.
+- **Extend Functionality**: I plan to expand the authentication flow to include features such as multi-factor authentication (MFA), password recovery, and email verification to enhance security and user experience.
+- **Integration with Different Backends**: While this project uses Directus, I aim to explore how similar authentication flows can be implemented with other backends and databases, broadening my understanding of web development ecosystems.
+- **Adaptation for Production**: Learning from this project, I intend to refine and adapt the authentication system for production use, ensuring it meets security standards and can scale with user growth.
