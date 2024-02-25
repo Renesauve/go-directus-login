@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"html/template"
 	"log"
@@ -40,6 +42,7 @@ func setupRoutes(userService *users.UserService) {
 	http.HandleFunc("/", serveRegistrationPage)
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) { loginHandler(w, r, userService) })
 	http.HandleFunc("/profile", func(w http.ResponseWriter, r *http.Request) { serveProfilePage(w, r, userService) })
+
 	http.HandleFunc("/logout", logoutHandler)
 	setupRegisterHandler(userService)
 }
@@ -172,16 +175,59 @@ func setupRegisterHandler(userService *users.UserService) {
 		}
 
 		email := r.FormValue("email")
-		password := r.FormValue("password")
 
-		// Use userService to create a new user.
-		userID, err := userService.CreateUser(email, password)
+		// Other registration logic...
+
+		log.Printf("Checking existence for email: %s", email)
+		exists, err := userService.UserExists(email)
+
 		if err != nil {
-			log.Printf("Failed to register user: %v", err)
-			http.Error(w, "Failed to register user", http.StatusInternalServerError)
+			// Handle error, e.g., log it and return an internal server error response.
+			log.Printf("Error checking if user exists: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if exists {
+			// Handle the case where the user already exists, e.g., return a specific error message.
+			http.Error(w, "User already exists", http.StatusBadRequest) // Customize as needed
 			return
 		}
 
-		fmt.Fprintf(w, "User registered successfully: %s", userID)
+		password := r.FormValue("password")
+
+		// Assuming you have a method to generate a secure token and hash the password
+		verificationToken, err := generateSecureToken(16) // For a 32-character token
+		if err != nil {
+			log.Printf("Error generating verification token: %v", err)
+			http.Error(w, "Failed to process registration", http.StatusInternalServerError)
+			return
+		}
+
+		if err != nil {
+			log.Printf("Error hashing password: %v", err)
+			http.Error(w, "Failed to process registration", http.StatusInternalServerError)
+			return
+		}
+
+		// Use userService to store the user's data temporarily
+		err = userService.CreateUser(email, password, verificationToken)
+
+		if err != nil {
+			log.Printf("Failed to store temporary user data: %v", err)
+			http.Error(w, "Failed to process registration", http.StatusInternalServerError)
+			return
+		}
+
+		// Send a verification email to the user
+
+		fmt.Fprintf(w, "Registration successful. Please check your email to verify your account.")
 	})
+}
+
+func generateSecureToken(length int) (string, error) {
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
 }
