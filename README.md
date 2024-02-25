@@ -4,11 +4,7 @@ This project implements a login flow using Go and Directus, providing a secure w
 
 ## Requirements
 
-To run this project, you must have a Directus Docker environment set up. This project is specifically designed to work with a setup provided by:
-
-[cookie-cloud-directus-docker-environment](https://github.com/CalebBarnes/cookie-cloud-directus-docker-environment)
-
-Please follow the setup instructions provided in the repository to prepare your Directus environment.
+To run this project, you must have a Directus Docker environment set up.
 
 ## Environment Setup
 
