@@ -57,6 +57,4 @@ To run your project with air, navigate to your project directory and execute:
 
 `air`
 
-air will automatically reload your Go application whenever a file change is detected, making development faster and more efficient.
-
-Ensure your Directus Docker environment is running as per the setup instructions in the cookie-cloud-directus-docker-environment repository.
+This will automatically reload your Go application whenever a file change is detected, making development faster and more efficient.
