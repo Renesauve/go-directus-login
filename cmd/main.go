@@ -2,14 +2,13 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -24,11 +23,11 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
+	startServer()
 	directusURL, directusEmail, directusPassword := loadEnv()
 	userService := users.NewUserService(directusURL, directusEmail, directusPassword)
 
 	setupRoutes(userService)
-	startServer()
 }
 
 func loadEnv() (string, string, string) {
@@ -49,28 +48,35 @@ func setupRoutes(userService *users.UserService) {
 
 func startServer() {
 	srv := &http.Server{Addr: ":8080"}
+
+	// Handling shutdown in a separate goroutine
 	go func() {
-		log.Println("Server starting on port 8080...")
-		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			log.Fatalf("ListenAndServe(): %v", err)
+		<-waitForShutdownSignal()
+		log.Println("Shutdown signal received, shutting down server...")
+		if err := srv.Shutdown(context.Background()); err != nil {
+			log.Fatalf("Server Shutdown: %v", err)
 		}
 	}()
-	waitForShutdown(srv)
+
+	log.Println("Server starting on port 8080...")
+	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+		log.Fatalf("ListenAndServe(): %v", err)
+	}
+	log.Println("Server stopped")
 }
 
-func waitForShutdown(srv *http.Server) {
+func waitForShutdownSignal() <-chan struct{} {
 	quit := make(chan os.Signal, 1)
+	done := make(chan struct{}, 1)
+
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("Shutting down server...")
+	go func() {
+		sig := <-quit
+		log.Printf("Server is stopping due to %+v", sig)
+		close(done)
+	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown:", err)
-	}
-
-	log.Println("Server exiting")
+	return done
 }
 
 func serveRegistrationPage(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +84,6 @@ func serveRegistrationPage(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "web/registration.html")
 }
 
-// In main.go
 func serveProfilePage(w http.ResponseWriter, r *http.Request, userService *users.UserService) {
 	sessionCookie, err := r.Cookie("session_token")
 	if err != nil {
@@ -169,65 +174,38 @@ func loginHandler(w http.ResponseWriter, r *http.Request, userService *users.Use
 // setupRegisterHandler configures the registration endpoint.
 func setupRegisterHandler(userService *users.UserService) {
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
+		// Ensure method is POST
 		if r.Method != "POST" {
 			http.Error(w, "Only POST method is supported", http.StatusMethodNotAllowed)
 			return
 		}
 
+		// Parse form data
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Error parsing form data", http.StatusBadRequest)
+			return
+		}
+
 		email := r.FormValue("email")
-
-		// Other registration logic...
-
-		log.Printf("Checking existence for email: %s", email)
-		exists, err := userService.UserExists(email)
-
-		if err != nil {
-			// Handle error, e.g., log it and return an internal server error response.
-			log.Printf("Error checking if user exists: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-		if exists {
-			// Handle the case where the user already exists, e.g., return a specific error message.
-			http.Error(w, "User already exists", http.StatusBadRequest) // Customize as needed
-			return
-		}
-
 		password := r.FormValue("password")
 
-		// Assuming you have a method to generate a secure token and hash the password
-		verificationToken, err := generateSecureToken(16) // For a 32-character token
+		// Call centralized registration logic
+		err := userService.RegisterUser(email, password)
 		if err != nil {
-			log.Printf("Error generating verification token: %v", err)
-			http.Error(w, "Failed to process registration", http.StatusInternalServerError)
+			// You can refine the error handling here to provide more specific messages based on the error returned
+			log.Printf("Registration error: %v", err)
+			if strings.Contains(err.Error(), "awaiting verification") {
+				http.Error(w, "Please check your email to verify your account.", http.StatusBadRequest)
+			} else if strings.Contains(err.Error(), "already exists") {
+				http.Error(w, "User already exists. Please login.", http.StatusBadRequest)
+			} else {
+				http.Error(w, "Failed to process registration", http.StatusInternalServerError)
+			}
 			return
 		}
 
-		if err != nil {
-			log.Printf("Error hashing password: %v", err)
-			http.Error(w, "Failed to process registration", http.StatusInternalServerError)
-			return
-		}
-
-		// Use userService to store the user's data temporarily
-		err = userService.CreateUser(email, password, verificationToken)
-
-		if err != nil {
-			log.Printf("Failed to store temporary user data: %v", err)
-			http.Error(w, "Failed to process registration", http.StatusInternalServerError)
-			return
-		}
-
-		// Send a verification email to the user
-
+		// Registration successful, send a verification email
+		// Note: Assuming the actual sending of the verification email happens within userService.RegisterUser
 		fmt.Fprintf(w, "Registration successful. Please check your email to verify your account.")
 	})
-}
-
-func generateSecureToken(length int) (string, error) {
-	bytes := make([]byte, length)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
 }

@@ -2,12 +2,10 @@
 package users
 
 import (
-	"encoding/json"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"navi/pkg/directus" // Update this import path to match your module's actual path
-	"net/http"
-	"os"
 )
 
 type UserProfile struct {
@@ -39,51 +37,53 @@ func (s *UserService) GetUserDetails(email string) (UserProfile, error) {
 	}, nil
 }
 
-func (s *UserService) CreateUser(email, password, verificationToken string) error {
+func (s *UserService) CreateTempUser(email, password, verificationToken string) error {
 	// Example logic to create a temporary user, potentially calling DirectusClient
-	err := s.DirectusClient.CreateUser(email, password, verificationToken) // Adjust based on actual implementation
+	err := s.DirectusClient.CreateTempUser(email, password, verificationToken) // Adjust based on actual implementation
 	if err != nil {
 		return err // Use '=' here since 'err' is already declared in the scope by the short variable declaration
 	}
 	return nil
 }
 
-func (s *UserService) UserExists(email string) (bool, error) {
-	// Construct the URL for querying the users collection by email.
-	// Adjust the URL based on your Directus version and setup.
-	url := fmt.Sprintf("%s/users?filter[email][_eq]=%s", s.DirectusClient.URL, email)
+func (s *UserService) UserExists(email string) (exists bool, inTempUsers bool, err error) {
+	// Use the DirectusClient to check the 'users' collection.
+	exists, err = s.DirectusClient.CheckEmailInCollection(email, "users")
+	if err != nil || exists {
+		return exists, false, err
+	}
 
-	// Prepare the HTTP request.
-	req, err := http.NewRequest("GET", url, nil)
+	// If not found in 'users', check in 'temp_users'.
+	exists, err = s.DirectusClient.CheckEmailInCollection(email, "temp_users")
+
+	return exists, exists, err
+}
+
+func (s *UserService) RegisterUser(email, password string) error {
+	exists, inTempUsers, err := s.UserExists(email)
+
 	if err != nil {
-		return false, fmt.Errorf("creating request: %w", err)
+		return fmt.Errorf("error checking user existence: %v", err)
+	}
+	if exists {
+		if inTempUsers {
+			return fmt.Errorf("user already exists and is awaiting verification")
+		}
+		return fmt.Errorf("user already exists")
 	}
 
-	// Include the authorization header with your Directus API token.
-	// Make sure to replace "YOUR_DIRECTUS_API_TOKEN" with your actual token.
-	req.Header.Add("Authorization", "Bearer "+os.Getenv("DIRECTUS_ADMIN_TOKEN"))
-
-	// Send the request.
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	verificationToken, err := generateSecureToken(16) // Assuming this is implemented correctly
 	if err != nil {
-		return false, fmt.Errorf("executing request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Read and parse the response body.
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return false, fmt.Errorf("reading response body: %w", err)
+		return fmt.Errorf("error generating verification token: %v", err)
 	}
 
-	var result struct {
-		Data []interface{} `json:"data"`
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return false, fmt.Errorf("parsing response body: %w", err)
-	}
+	return s.CreateTempUser(email, password, verificationToken)
+}
 
-	// If the data array is not empty, a user with the email exists.
-	return len(result.Data) > 0, nil
+func generateSecureToken(length int) (string, error) {
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
 }
