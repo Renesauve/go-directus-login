@@ -2,11 +2,11 @@
 
 ## About This Project
 
-This project is a personal exploration into building an authentication flow using GoLang in conjunction with Directus as the backend. It serves as a learning tool for understanding how to implement secure login mechanisms and manage user sessions.
+This project is a personal exploration into building an authentication flow using Go in conjunction with Directus as the backend. It serves as a learning tool for understanding how to implement secure login mechanisms and manage user sessions.
 
 ### Objectives
 
-- To learn how to integrate GoLang with Directus for user authentication.
+- To learn how to integrate Go with Directus for user authentication.
 - To understand the process of securing user login and registration.
 - To explore best practices in managing user sessions and security tokens.
 
@@ -26,7 +26,7 @@ Through this project, I aimed to gain a deeper understanding of:
 
 ## Disclaimer
 
-This project is intended solely for my learning and is not meant as a production-ready solution. It showcases specific techniques and approaches in GoLang programming and Directus integration without focusing on comprehensive error handling or scalability concerns.
+This project is intended solely for my learning and is not meant as a production-ready solution. It showcases specific techniques and approaches in Go programming and Directus integration without focusing on comprehensive error handling or scalability concerns.
 
 ## Acknowledgements
 
