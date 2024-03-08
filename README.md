@@ -1,4 +1,4 @@
-# GoLang & Directus Authentication Flow
+# Golang & Directus Authentication Flow
 
 ## About This Project
 
